@@ -1,9 +1,25 @@
+import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 DATA = Path(__file__).parent.parent / "data"
+SOURCE = Path(__file__).with_name("step11.cpp")
+
+
+def read_cpp_parameter(name):
+    source = SOURCE.read_text()
+    match = re.search(rf"double\s+{name}\s*=\s*([0-9.eE+-]+)\s*;", source)
+    if match is None:
+        raise ValueError(f"Could not find {name} in {SOURCE}")
+    return float(match.group(1))
+
+
+rho = read_cpp_parameter("rho")
+nu = read_cpp_parameter("nu")
+reynolds_number = (1.0 * 1.0 * rho) / nu
+
 
 def load_field(name):
     values = np.loadtxt(DATA / f"{name}.csv", delimiter=",", skiprows=1)
@@ -40,5 +56,6 @@ for axis, name in zip(axes, ("u", "v", "p")):
 #     color="white", edgecolor="black", linewidth=0.5
 # )
 
-plt.tight_layout()
+fig.suptitle(f"2D Lid-Driven Cavity (Re = {reynolds_number:g})")
+plt.tight_layout(rect=(0, 0, 1, 0.95))
 plt.show()
