@@ -41,8 +41,9 @@ for axis, name in zip(axes, ("u", "v", "p")):
     # Add filled contours and contour lines
     y_coords = np.linspace(0, 1, field.shape[0])
     x_coords = np.linspace(0, 1, field.shape[1])
-    cf = axis.contourf(x_coords, y_coords, field, levels=15, cmap="turbo")
-    # axis.contour(x_coords, y_coords, field, colors="white", linewidths=0.5)
+    contour_levels = 15
+    cf = axis.contourf(x_coords, y_coords, field, levels=contour_levels, cmap="turbo")
+    axis.contour(x_coords, y_coords, field, colors="black", levels=contour_levels, linewidths=0.5)
     axis.set_title(name)
     axis.set_xlabel("x")
     axis.set_ylabel("y")

@@ -157,7 +157,7 @@ int main()
     // double c =1.0;
     double dx = 2.0/(nx-1);
     double dy = 2.0/(ny-1);
-    double rho = 100;
+    double rho = 0.1;
     double nu = 0.1;
     double cfl = 0.5; // Used in adaptive time step calc
     // double dt = 0.001;
