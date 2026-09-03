@@ -6,7 +6,8 @@ coordinate in the $x$ direction and $j$ the coordinate in the $y$ direction.
 The grid spacings are $\Delta x$ and $\Delta y$, and the time step is
 $\Delta t$.
 
-## Source term $b$
+## Pressure Poisson equation
+### Source term $b$
 
 The code constructs the source term from the continuity equation and the
 velocity derivatives:
@@ -40,7 +41,7 @@ $$
 \approx \frac{v_{j+1,i}-v_{j-1,i}}{2\Delta y}.
 $$
 
-## Pressure Poisson equation
+### Pressure equation
 
 The usual pressure equation is
 
@@ -74,7 +75,7 @@ $$
 This update is repeated `nit` times. Since the code updates `p` in place, each
 iteration uses newly updated neighboring values when they are available.
 
-## Pressure boundary conditions
+### Pressure boundary conditions
 
 After every pressure iteration, the following boundary conditions are applied:
 
@@ -143,4 +144,24 @@ $$
 
 and identically for $v$.
 
-Next up, to verify with ghia et al
+## Adaptive timestepping
+The velocity timestep equation is calculated as:
+$$
+u^{n+1} = u^n + \Delta t
+\left(
+-\text{convectionTerm}
+-\text{pressureTerm}
++\text{diffusionTerm}
+\right)
+$$
+
+For stability, we need to look at the convection and diffusion terms.
+
+For convection term, we can derive that for a stable solution, $\Delta t \leq min(\frac{\Delta x}{u},\frac{\Delta y}{v})$
+
+For diffusion, we can derive similarly, $\Delta t \leq \frac{\Delta x^2}{4\nu}$
+
+Therefore, combining the two we can say that for a stable solution, we need
+$$
+\Delta t \leq min \left( \frac{\Delta x}{u},\frac{\Delta y}{v},\frac{\Delta x^2}{4\nu} \right) 
+$$

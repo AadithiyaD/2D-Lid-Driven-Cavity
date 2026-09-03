@@ -5,6 +5,8 @@
 #include <string>
 #include <tuple>
 #include <chrono>
+#include <algorithm>
+#include <limits>
 
 #include <eigen3/Eigen/Dense>
 #include "myMathFuncs/discretizationSchemes.h"
@@ -61,11 +63,20 @@ void pressurePoisson(
 std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd> 
 cavityFlow(
     Eigen::MatrixXd u, Eigen::MatrixXd v, Eigen::MatrixXd p,
-    double nt, double nit, double dt, double dx, double dy,
+    double nt, double nit, double cfl, double dx, double dy,
     double nx, double ny, double rho, double nu)
 {
     for (int n=0; n<nt; ++n) 
-    {
+    {   
+        double u_max = u.cwiseAbs().maxCoeff();
+        double v_max = v.cwiseAbs().maxCoeff();
+        double epsilon = 1e-10;
+        double convectiveDt = std::min(
+            dx / (u_max + epsilon),
+            dy / (v_max + epsilon));
+        double diffusiveDt = sqr(dx)/(nu*4.0);
+        double dt = cfl * std::min(convectiveDt, diffusiveDt);
+
         Eigen::MatrixXd un = u;
         Eigen::MatrixXd vn = v;
 
@@ -139,16 +150,17 @@ int main()
     auto startTime = std::chrono::steady_clock::now();
 
     // Initialise variables
-    int nx = 82;
-    int ny = 82;
-    int nt = 1000;
+    int nx = 129;
+    int ny = 129;
+    int nt = 20000;
     int nit = 50; // Pseudo-time variable used in pressure poisson equation
     // double c =1.0;
     double dx = 2.0/(nx-1);
     double dy = 2.0/(ny-1);
     double rho = 0.1;
     double nu = 0.1;
-    double dt = 0.001;
+    double cfl = 0.5; // Used in adaptive time step calc
+    // double dt = 0.001;
 
     // Initialise matrices
     Eigen::MatrixXd u = Eigen::MatrixXd::Zero(ny, nx);
@@ -160,7 +172,7 @@ int main()
 
     // Advance cavity flow solution
     // std::tie unpacks the tuple into u,v,p
-    std::tie(u, v, p) = cavityFlow(u, v, p, nt, nit, dt, dx, dy, nx, ny, rho, nu);
+    std::tie(u, v, p) = cavityFlow(u, v, p, nt, nit, cfl, dx, dy, nx, ny, rho, nu);
 
     // Assuming exe is run from the build dir
     writeCsv("../data/u.csv", u);
