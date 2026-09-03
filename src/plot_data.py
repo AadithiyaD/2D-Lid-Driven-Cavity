@@ -58,4 +58,5 @@ for axis, name in zip(axes, ("u", "v", "p")):
 
 fig.suptitle(f"2D Lid-Driven Cavity (Re = {reynolds_number:g})")
 plt.tight_layout(rect=(0, 0, 1, 0.95))
+plt.savefig(Path(__file__).parent.parent/"img"/f"output_Re_{reynolds_number}.png")
 plt.show()
