@@ -64,7 +64,7 @@ std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd>
 cavityFlow(
     Eigen::MatrixXd u, Eigen::MatrixXd v, Eigen::MatrixXd p,
     double nt, double nit, double cfl, double dx, double dy,
-    double nx, double ny, double rho, double nu)
+    double nx, double ny, double rho, double nu, double u_bc)
 {
     for (int n=0; n<nt; ++n) 
     {   
@@ -122,7 +122,7 @@ cavityFlow(
         u.row(0).setZero();
         u.col(0).setZero();
         u.col(u.cols()-1).setZero();
-        u.row(u.rows()-1).setOnes();
+        u.row(u.rows()-1).setConstant(u_bc);
 
         v.row(0).setZero();
         v.col(0).setZero();
@@ -152,19 +152,20 @@ int main()
     // Initialise variables
     int nx = 129;
     int ny = nx;
-    int nt = 20000;
+    int nt = 2500;
     int nit = 50; // Pseudo-time variable used in pressure poisson equation
     // double c =1.0;
     double dx = 2.0/(nx-1);
     double dy = 2.0/(ny-1);
     double rho = 0.1;
     double nu = 0.1;
-    double cfl = 0.5; // Used in adaptive time step calc
-    // double dt = 0.001;
+    double cfl = 0.5; // Used in adaptive time step calc. Technically this should be called safety factor i think
+    double u_bc = 10.0; // U velocity boundary condition
 
     // Initialise matrices
     Eigen::MatrixXd u = Eigen::MatrixXd::Zero(ny, nx);
-    u.row(0).setOnes(); // Velocity on cavity lid = 1
+    // u.row(0).setOnes(); // Velocity on cavity lid = 1
+    u.row(0).setConstant(u_bc);
 
     Eigen::MatrixXd v = Eigen::MatrixXd::Zero(ny, nx);
     Eigen::MatrixXd p = Eigen::MatrixXd::Zero(ny, nx);
@@ -172,7 +173,7 @@ int main()
 
     // Advance cavity flow solution
     // std::tie unpacks the tuple into u,v,p
-    std::tie(u, v, p) = cavityFlow(u, v, p, nt, nit, cfl, dx, dy, nx, ny, rho, nu);
+    std::tie(u, v, p) = cavityFlow(u, v, p, nt, nit, cfl, dx, dy, nx, ny, rho, nu, u_bc);
 
     // Assuming exe is run from the build dir
     writeCsv("../data/u.csv", u);

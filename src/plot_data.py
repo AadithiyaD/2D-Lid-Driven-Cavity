@@ -16,9 +16,10 @@ def read_cpp_parameter(name):
     return float(match.group(1))
 
 
-rho = read_cpp_parameter("rho")
+# rho = read_cpp_parameter("rho")
 nu = read_cpp_parameter("nu")
-reynolds_number = (1.0 * 1.0 * rho) / nu
+u_bc = read_cpp_parameter("u_bc")
+reynolds_number = (1.0 * u_bc ) / nu
 
 
 def load_field(name):

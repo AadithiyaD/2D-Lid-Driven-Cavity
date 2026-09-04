@@ -24,3 +24,7 @@ cmake --build .
 
 ## Script structure
 `step11.cpp` is the main file handling numerics. The equations implemented here are derived in `step11_eqnExp.md`. The file writes out data to the `data/` dir, which is plotted using the `plot_data.py` script.
+
+
+
+!!! Check why cavity flow structure does nnot change with Re
