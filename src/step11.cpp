@@ -124,23 +124,23 @@ cavityFlow(
             for (int i = 1; i<nx - 1; ++i)
             {
                 // Build terms
-                double dudx = backwardDiffFO(un(j,i), un(j,i-1), dx);  
-                double dudy = backwardDiffFO(un(j,i), un(j-1,i), dy);
+                double dudx = upwindFO(un(j,i),un(j,i), un(j,i+1), un(j,i-1), dx);
+                double dudy = upwindFO(vn(j,i),un(j,i), un(j+1,i), un(j-1,i), dy);
                 double dpdx = centralDiffFO(p(j,i-1), p(j,i+1), dx);
                 double d2udx2 = centralDiffSO(un(j,i), un(j,i-1), un(j,i+1), dx);
                 double d2udy2 = centralDiffSO(un(j,i), un(j-1,i), un(j+1,i), dy);
                 
-                double dvdx = backwardDiffFO(vn(j,i), vn(j,i-1), dx);  
-                double dvdy = backwardDiffFO(vn(j,i), vn(j-1,i), dy);
+                double dvdx = upwindFO(un(j,i), vn(j,i), vn(j,i+1), vn(j,i-1), dx);
+                double dvdy = upwindFO(vn(j,i),vn(j,i), vn(j+1,i), vn(j-1,i), dy);
                 double dpdy = centralDiffFO(p(j-1,i), p(j+1,i), dy);
                 double d2vdx2 = centralDiffSO(vn(j,i), vn(j,i-1), vn(j,i+1), dx);
                 double d2vdy2 = centralDiffSO(vn(j,i), vn(j-1,i), vn(j+1,i), dy);
                 
-                double convectionTermX = un(j,i)*dudx + v(j,i)*dudy;
+                double convectionTermX = un(j,i)*dudx + vn(j,i)*dudy;
                 double pressureTermX = (-1/rho)*dpdx;
                 double diffusionTermX = (nu)*(d2udx2 + d2udy2);
 
-                double convectionTermY = un(j,i)*dvdx + v(j,i)*dvdy;
+                double convectionTermY = un(j,i)*dvdx + vn(j,i)*dvdy;
                 double pressureTermY = (-1/rho)*dpdy;
                 double diffusionTermY = (nu)*(d2vdx2 + d2vdy2);
 
@@ -161,6 +161,7 @@ cavityFlow(
         v.col(v.cols()-1).setZero();
 
         // Write out residuals for u,v
+        // TODO - Can probably write out every 50 or so iterations, should speedup for large nt's
         Eigen::MatrixXd u_residual = (u - un)/dt;
         Eigen::MatrixXd v_residual = (v - vn)/dt;
         const std::string writeMode = (n == 0) ? "new" : "append";
@@ -178,7 +179,7 @@ int main()
     // User input var
     double u_bc = 100.0;    // U velocity boundary condition
     int nx_user = 129;
-    int nt = 1000;
+    int nt = 80000;
     int nit = 50;           // Pseudo-time variable used in pressure poisson equation
     double nu = 0.1;
     double rho = 0.1;

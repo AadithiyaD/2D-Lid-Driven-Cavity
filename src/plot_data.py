@@ -38,14 +38,6 @@ def load_residual_norms(name):
     return values[:, 0], values[:, 1], values[:, 2]
 
 
-def pressure_checkerboard_component(pressure):
-    # Project pressure onto the alternating even-odd grid mode (-1)^(i+j).
-    row_indices, column_indices = np.indices(pressure.shape)
-    checkerboard_mode = (-1.0) ** (row_indices + column_indices)
-    coefficient = np.sum(pressure * checkerboard_mode) / np.sum(checkerboard_mode ** 2)
-    return coefficient * checkerboard_mode, coefficient
-
-
 # Load and plot the final velocity and pressure fields.
 fig, axes = plt.subplots(1, 3, figsize=(12, 4))
 u = load_field("u")
@@ -80,34 +72,24 @@ plt.tight_layout(rect=(0, 0, 1, 0.95))
 plt.savefig(Path(__file__).parent.parent/"img"/f"output_Re_{reynolds_number}.png")
 plt.show()
 
-# Extract and plot only the pressure's alternating checkerboard mode.
-pressure_checkerboard, checkerboard_coefficient = pressure_checkerboard_component(p)
-pressure_without_checkerboard = p - pressure_checkerboard
-pressure_scale = np.max(np.abs(p))
-relative_checkerboard = (
-    np.max(np.abs(pressure_checkerboard)) / pressure_scale
-    if pressure_scale > 0 else 0.0
+# Plot velocity magnitude separately from the component fields.
+u_magnitude = np.sqrt(u**2 + v**2)
+magnitude_fig, magnitude_axis = plt.subplots(figsize=(6, 5))
+magnitude_levels = 15
+magnitude_contours = magnitude_axis.contourf(
+    x_coords, y_coords, u_magnitude, levels=magnitude_levels, cmap="turbo"
 )
-print(
-    f"Pressure checkerboard coefficient: {checkerboard_coefficient:.6e} "
-    f"({relative_checkerboard:.3%} of max pressure)"
+magnitude_axis.contour(
+    x_coords, y_coords, u_magnitude,
+    levels=magnitude_levels, colors="black", linewidths=0.5,
 )
-
-checkerboard_fig, checkerboard_axes = plt.subplots(1, 2, figsize=(10, 4))
-checkerboard_data = (
-    (pressure_checkerboard, "Extracted checkerboard mode"),
-    (pressure_without_checkerboard, "Pressure without checkerboard mode"),
-)
-for axis, (field, title) in zip(checkerboard_axes, checkerboard_data):
-    image = axis.imshow(field, origin="lower", cmap="bwr", aspect="equal")
-    axis.set_title(title)
-    axis.set_xlabel("x index")
-    axis.set_ylabel("y index")
-    checkerboard_fig.colorbar(image, ax=axis)
-
-checkerboard_fig.suptitle("Pressure checkerboard diagnostic")
-checkerboard_fig.tight_layout(rect=(0, 0, 1, 0.95))
-checkerboard_fig.savefig(Path(__file__).parent.parent / "img" / f"pressure_checkerboard_re{reynolds_number}.png")
+magnitude_axis.set_title("Velocity magnitude")
+magnitude_axis.set_xlabel("x")
+magnitude_axis.set_ylabel("y")
+magnitude_axis.set_aspect("equal", adjustable="box")
+magnitude_fig.colorbar(magnitude_contours, ax=magnitude_axis, label="|U|")
+magnitude_fig.tight_layout()
+magnitude_fig.savefig(Path(__file__).parent.parent / "img" / f"u_magnitude_re{reynolds_number}.png")
 plt.show()
 
 # Load timestep-indexed residual norms for both velocity components.

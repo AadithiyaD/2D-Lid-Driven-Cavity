@@ -23,13 +23,14 @@ double centralDiffSO(
 }
 
 double upwindFO(
+    const double& advectingVelo,
     const double& currentVal,
     const double& nextVal,
     const double& previousVal,
     double dH
 )
 {
-    if (currentVal >= 0) 
+    if (advectingVelo >= 0) 
     {
         return (currentVal - previousVal)/(dH);
     }

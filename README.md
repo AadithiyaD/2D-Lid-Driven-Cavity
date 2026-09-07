@@ -24,11 +24,3 @@ cmake --build .
 
 ## Script structure
 `step11.cpp` is the main file handling numerics. The equations implemented here are derived in `step11_eqnExp.md`. The file writes out data to the `data/` dir, which is plotted using the `plot_data.py` script.
-
-
-Notes - 
-The problem is due to checkerboarding. Maybe preserve this code status as an illustrative example. Need to read up more on how to diagnose and detect oressure checkerboarding
-For Re = 100
-Pressure checkerboard coefficient: -4.181641e-05 (0.000% of max pressure)
-For Re = 1000
-Pressure checkerboard coefficient: 1.246079e+244 (0.000% of max pressure)
