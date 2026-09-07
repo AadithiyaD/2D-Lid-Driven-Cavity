@@ -6,11 +6,42 @@
 #include <tuple>
 #include <chrono>
 #include <algorithm>
-#include <limits>
+#include <cmath>
 
 #include <eigen3/Eigen/Dense>
 #include "myMathFuncs/discretizationSchemes.h"
 #include "myMathFuncs/operators.h"
+
+void writeCsv(const std::string& filename, const Eigen::MatrixXd& field)
+{
+    std::ofstream output(filename);
+    output << "row,column,value\n";
+
+    for (int row = 0; row < field.rows(); ++row)
+    {
+        for (int column = 0; column < field.cols(); ++column)
+        {
+            output << row << ',' << column << ',' << field(row, column) << '\n';
+        }
+    }
+}
+
+void writeResidualNorms(
+    const std::string& filename, int timestep,
+    const Eigen::MatrixXd& residual, std::string writemode="new")
+{
+    std::ofstream output;
+    if (writemode == "append") {
+        output.open(filename, std::ios_base::app | std::ios_base::out);
+    } else {
+        output.open(filename);
+        output << "timestep,l2_norm,infinity_norm\n";
+    }
+
+    const double l2Norm = std::sqrt(residual.array().square().sum());
+    const double infinityNorm = residual.cwiseAbs().maxCoeff();
+    output << timestep << ',' << l2Norm << ',' << infinityNorm << '\n';
+}
 
 Eigen::MatrixXd getSourceTermB(
     const Eigen::MatrixXd& u, const Eigen::MatrixXd& v,
@@ -52,9 +83,9 @@ void pressurePoisson(
         
         // Re-apply B.Cs
         p.col(p.cols() - 1) = p.col(p.cols() - 2);  // dp/dx = 0 at x = 2
-        p.row(0) = p.row(1);                        //  dp/dy = 0 at y = 0
+        p.row(0) = p.row(1);                        // dp/dy = 0 at y = 0
         p.col(0) = p.col(1);                        // dp/dx = 0 at x = 0
-        p.row(p.rows() - 1).setZero();                // p = 0 at y = 2
+        p.row(p.rows() - 1).setZero();                 // p = 0 at y = 2
 
     }
 }
@@ -128,43 +159,39 @@ cavityFlow(
         v.col(0).setZero();
         v.row(v.rows()-1).setZero();
         v.col(v.cols()-1).setZero();
+
+        // Write out residuals for u,v
+        Eigen::MatrixXd u_residual = (u - un)/dt;
+        Eigen::MatrixXd v_residual = (v - vn)/dt;
+        const std::string writeMode = (n == 0) ? "new" : "append";
+        writeResidualNorms("../data/u_residual_norms.csv", n, u_residual, writeMode);
+        writeResidualNorms("../data/v_residual_norms.csv", n, v_residual, writeMode);
+
     }
     return {u, v, p};
-}
-
-void writeCsv(const std::string& filename, const Eigen::MatrixXd& field)
-{
-    std::ofstream output(filename);
-    output << "row,column,value\n";
-    for (int row = 0; row < field.rows(); ++row)
-    {
-        for (int column = 0; column < field.cols(); ++column)
-        {
-            output << row << ',' << column << ',' << field(row, column) << '\n';
-        }
-    }
 }
 
 int main() 
 {
     auto startTime = std::chrono::steady_clock::now();
 
-    // Initialise variables
-    int nx = 129;
-    int ny = nx;
-    int nt = 2500;
-    int nit = 50; // Pseudo-time variable used in pressure poisson equation
-    // double c =1.0;
-    double dx = 2.0/(nx-1);
-    double dy = 2.0/(ny-1);
-    double rho = 0.1;
+    // User input var
+    double u_bc = 100.0;    // U velocity boundary condition
+    int nx_user = 129;
+    int nt = 1000;
+    int nit = 50;           // Pseudo-time variable used in pressure poisson equation
     double nu = 0.1;
-    double cfl = 0.5; // Used in adaptive time step calc. Technically this should be called safety factor i think
-    double u_bc = 10.0; // U velocity boundary condition
+    double rho = 0.1;
+    double cfl = 0.5;       // Used in adaptive time step calc. Technically this should be called safety factor i think
+    
+    int nx = nx_user;
+    double dx = 1.0 / (nx - 1.0);
+    int ny = nx;
+    double dy = dx;
+
 
     // Initialise matrices
     Eigen::MatrixXd u = Eigen::MatrixXd::Zero(ny, nx);
-    // u.row(0).setOnes(); // Velocity on cavity lid = 1
     u.row(0).setConstant(u_bc);
 
     Eigen::MatrixXd v = Eigen::MatrixXd::Zero(ny, nx);

@@ -9,3 +9,9 @@ double centralDiffSO(
 	const double& nextVal,
 	double dH
 );
+double upwindFO(
+    const double& currentVal,
+    const double& nextVal,
+    const double& previousVal,
+    double dH
+)

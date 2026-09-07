@@ -21,3 +21,20 @@ double centralDiffSO(
 {
     return (nextVal - (2*currentVal) + previousVal)/(dH * dH);
 }
+
+double upwindFO(
+    const double& currentVal,
+    const double& nextVal,
+    const double& previousVal,
+    double dH
+)
+{
+    if (currentVal >= 0) 
+    {
+        return (currentVal - previousVal)/(dH);
+    }
+    else
+    {
+        return (nextVal - currentVal)/(dH);
+    }
+}

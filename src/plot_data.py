@@ -19,7 +19,7 @@ def read_cpp_parameter(name):
 # rho = read_cpp_parameter("rho")
 nu = read_cpp_parameter("nu")
 u_bc = read_cpp_parameter("u_bc")
-reynolds_number = (1.0 * u_bc ) / nu
+reynolds_number = (1.0 * u_bc ) / nu # Re=Dv/nu, D=1.0, nu=0.1, v from bc setting
 
 
 def load_field(name):
@@ -31,6 +31,22 @@ def load_field(name):
     return field
 
 
+def load_residual_norms(name):
+    # Read one row per timestep: timestep, L2 norm, infinity norm.
+    values = np.loadtxt(DATA / f"{name}.csv", delimiter=",", skiprows=1)
+    values = np.atleast_2d(values)
+    return values[:, 0], values[:, 1], values[:, 2]
+
+
+def pressure_checkerboard_component(pressure):
+    # Project pressure onto the alternating even-odd grid mode (-1)^(i+j).
+    row_indices, column_indices = np.indices(pressure.shape)
+    checkerboard_mode = (-1.0) ** (row_indices + column_indices)
+    coefficient = np.sum(pressure * checkerboard_mode) / np.sum(checkerboard_mode ** 2)
+    return coefficient * checkerboard_mode, coefficient
+
+
+# Load and plot the final velocity and pressure fields.
 fig, axes = plt.subplots(1, 3, figsize=(12, 4))
 u = load_field("u")
 v = load_field("v")
@@ -39,7 +55,7 @@ X, Y = np.meshgrid(np.arange(u.shape[1]), np.arange(u.shape[0]))
 
 for axis, name in zip(axes, ("u", "v", "p")):
     field = {"u": u, "v": v, "p": p}[name]
-    # Add filled contours and contour lines
+    # Use filled contours and contour lines to show each field.
     y_coords = np.linspace(0, 1, field.shape[0])
     x_coords = np.linspace(0, 1, field.shape[1])
     contour_levels = 15
@@ -53,6 +69,7 @@ for axis, name in zip(axes, ("u", "v", "p")):
     axis.set_yticks(np.linspace(0, 1, 5))
     fig.colorbar(cf, ax=axis)
 
+# Optional velocity-vector overlay:
 # axes[0].quiver(
 #     X[::2, ::2], Y[::2, ::2], u[::2, ::2], v[::2, ::2],
 #     color="white", edgecolor="black", linewidth=0.5
@@ -62,3 +79,67 @@ fig.suptitle(f"2D Lid-Driven Cavity (Re = {reynolds_number:g})")
 plt.tight_layout(rect=(0, 0, 1, 0.95))
 plt.savefig(Path(__file__).parent.parent/"img"/f"output_Re_{reynolds_number}.png")
 plt.show()
+
+# Extract and plot only the pressure's alternating checkerboard mode.
+pressure_checkerboard, checkerboard_coefficient = pressure_checkerboard_component(p)
+pressure_without_checkerboard = p - pressure_checkerboard
+pressure_scale = np.max(np.abs(p))
+relative_checkerboard = (
+    np.max(np.abs(pressure_checkerboard)) / pressure_scale
+    if pressure_scale > 0 else 0.0
+)
+print(
+    f"Pressure checkerboard coefficient: {checkerboard_coefficient:.6e} "
+    f"({relative_checkerboard:.3%} of max pressure)"
+)
+
+checkerboard_fig, checkerboard_axes = plt.subplots(1, 2, figsize=(10, 4))
+checkerboard_data = (
+    (pressure_checkerboard, "Extracted checkerboard mode"),
+    (pressure_without_checkerboard, "Pressure without checkerboard mode"),
+)
+for axis, (field, title) in zip(checkerboard_axes, checkerboard_data):
+    image = axis.imshow(field, origin="lower", cmap="bwr", aspect="equal")
+    axis.set_title(title)
+    axis.set_xlabel("x index")
+    axis.set_ylabel("y index")
+    checkerboard_fig.colorbar(image, ax=axis)
+
+checkerboard_fig.suptitle("Pressure checkerboard diagnostic")
+checkerboard_fig.tight_layout(rect=(0, 0, 1, 0.95))
+checkerboard_fig.savefig(Path(__file__).parent.parent / "img" / f"pressure_checkerboard_re{reynolds_number}.png")
+plt.show()
+
+# Load timestep-indexed residual norms for both velocity components.
+u_timesteps, u_l2, u_infinity = load_residual_norms("u_residual_norms")
+v_timesteps, v_l2, v_infinity = load_residual_norms("v_residual_norms")
+
+# Plot both norms for u and v on one logarithmic axis.
+# Color identifies the component; line style identifies the norm.
+residual_fig, residual_axis = plt.subplots(figsize=(10, 6))
+residual_series = (
+    (u_timesteps, u_l2, "u L2 norm", "C0", "-"),
+    (u_timesteps, u_infinity, "u infinity norm", "C0", "--"),
+    (v_timesteps, v_l2, "v L2 norm", "C1", "-"),
+    (v_timesteps, v_infinity, "v infinity norm", "C1", "--"),
+)
+
+for timesteps, norms, label, color, linestyle in residual_series:
+    # Stop the plotted curve before overflow values such as inf.
+    finite_values = np.isfinite(norms)
+    residual_axis.plot(
+        timesteps[finite_values], norms[finite_values],
+        label=label, color=color, linestyle=linestyle,
+    )
+
+residual_axis.set_yscale("log")
+residual_axis.set_xlabel("timestep")
+residual_axis.set_ylabel("norm")
+residual_axis.set_title("Velocity residual norms")
+residual_axis.grid(True, which="both", alpha=0.3)
+residual_axis.legend()
+residual_fig.tight_layout()
+# Save residual history separately from the final-field figure.
+residual_fig.savefig(Path(__file__).parent.parent / "img" / "residual_norms.png")
+plt.show()
+
