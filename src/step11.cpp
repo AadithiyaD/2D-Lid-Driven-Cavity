@@ -15,7 +15,7 @@
 void writeCsv(const std::string& filename, const Eigen::MatrixXd& field)
 {
     std::ofstream output(filename);
-    output << "row,column,value\n";
+    output << "yCoord,xCoord,value\n";
 
     for (int row = 0; row < field.rows(); ++row)
     {
@@ -58,7 +58,11 @@ Eigen::MatrixXd getSourceTermB(
             double dudy = centralDiffFO(u(j-1,i), u(j+1,i), dy);  
             double dvdx = centralDiffFO(v(j,i-1), v(j,i+1), dx);  
 
-            b(j,i) = (rho)*( (1/dt)*(dudx + dvdy) - sqr(dudx) - 2*dudy*dvdx - sqr(dvdy) );
+            b(j,i) = (rho)*( 
+                (1/dt)*(dudx + dvdy)
+                - sqr(dudx)
+                - 2*dudy*dvdx
+                - sqr(dvdy) );
         }
     }
     return b;
@@ -75,9 +79,12 @@ void pressurePoisson(
         {
             for (int i = 1; i<p.cols() - 1; ++i)
             {
-                double pTerms = ((p(j,i+1) + p(j,i-1))/sqr(dx)) +(p(j+1,i)+p(j-1,i))/sqr(dy);
+                double pTerms = ((p(j,i+1) + p(j,i-1))/sqr(dx))
+                                + (p(j+1,i) + p(j-1,i))/sqr(dy);
 
-                p(j,i) = ( (b(j,i) - pTerms)/(-2.0) ) * ( (sqr(dx)*sqr(dy))/(sqr(dx)+sqr(dy)) );
+                p(j,i) = ( 
+                    (b(j,i) - pTerms)/(-2.0) )
+                    *((sqr(dx) * sqr(dy))/(sqr(dx) + sqr(dy)) );
             }
         }
         
@@ -95,7 +102,9 @@ std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd>
 cavityFlow(
     Eigen::MatrixXd u, Eigen::MatrixXd v, Eigen::MatrixXd p,
     double nt, double nit, double cfl, double dx, double dy,
-    double nx, double ny, double rho, double nu, double u_bc)
+    double nx, double ny, double rho, double nu, double u_bc,
+    int Re
+)
 {
     for (int n=0; n<nt; ++n) 
     {   
@@ -124,25 +133,25 @@ cavityFlow(
             for (int i = 1; i<nx - 1; ++i)
             {
                 // Build terms
-                double dudx = upwindFO(un(j,i),un(j,i), un(j,i+1), un(j,i-1), dx);
-                double dudy = upwindFO(vn(j,i),un(j,i), un(j+1,i), un(j-1,i), dy);
-                double dpdx = centralDiffFO(p(j,i-1), p(j,i+1), dx);
+                double dudx   = upwindFO(un(j,i),un(j,i), un(j,i+1), un(j,i-1), dx);
+                double dudy   = upwindFO(vn(j,i),un(j,i), un(j+1,i), un(j-1,i), dy);
+                double dpdx   = centralDiffFO(p(j,i-1), p(j,i+1), dx);
                 double d2udx2 = centralDiffSO(un(j,i), un(j,i-1), un(j,i+1), dx);
                 double d2udy2 = centralDiffSO(un(j,i), un(j-1,i), un(j+1,i), dy);
                 
-                double dvdx = upwindFO(un(j,i), vn(j,i), vn(j,i+1), vn(j,i-1), dx);
-                double dvdy = upwindFO(vn(j,i),vn(j,i), vn(j+1,i), vn(j-1,i), dy);
-                double dpdy = centralDiffFO(p(j-1,i), p(j+1,i), dy);
+                double dvdx   = upwindFO(un(j,i), vn(j,i), vn(j,i+1), vn(j,i-1), dx);
+                double dvdy   = upwindFO(vn(j,i),vn(j,i), vn(j+1,i), vn(j-1,i), dy);
+                double dpdy   = centralDiffFO(p(j-1,i), p(j+1,i), dy);
                 double d2vdx2 = centralDiffSO(vn(j,i), vn(j,i-1), vn(j,i+1), dx);
                 double d2vdy2 = centralDiffSO(vn(j,i), vn(j-1,i), vn(j+1,i), dy);
                 
                 double convectionTermX = un(j,i)*dudx + vn(j,i)*dudy;
-                double pressureTermX = (-1/rho)*dpdx;
-                double diffusionTermX = (nu)*(d2udx2 + d2udy2);
+                double pressureTermX   = (-1/rho)*dpdx;
+                double diffusionTermX  = (nu)*(d2udx2 + d2udy2);
 
                 double convectionTermY = un(j,i)*dvdx + vn(j,i)*dvdy;
-                double pressureTermY = (-1/rho)*dpdy;
-                double diffusionTermY = (nu)*(d2vdx2 + d2vdy2);
+                double pressureTermY   = (-1/rho)*dpdy;
+                double diffusionTermY  = (nu)*(d2vdx2 + d2vdy2);
 
                 u(j,i) = un(j,i) + (dt)*(pressureTermX - convectionTermX + diffusionTermX);
                 v(j,i) = vn(j,i) + (dt)*(pressureTermY - convectionTermY + diffusionTermY);
@@ -161,12 +170,15 @@ cavityFlow(
         v.col(v.cols()-1).setZero();
 
         // Write out residuals for u,v
-        // TODO - Can probably write out every 50 or so iterations, should speedup for large nt's
-        Eigen::MatrixXd u_residual = (u - un)/dt;
-        Eigen::MatrixXd v_residual = (v - vn)/dt;
-        const std::string writeMode = (n == 0) ? "new" : "append";
-        writeResidualNorms("../data/u_residual_norms.csv", n, u_residual, writeMode);
-        writeResidualNorms("../data/v_residual_norms.csv", n, v_residual, writeMode);
+        if (n % 50 == 0) 
+        {
+            Eigen::MatrixXd u_residual = (u - un)/dt;
+            Eigen::MatrixXd v_residual = (v - vn)/dt;
+            const std::string writeMode = (n == 0) ? "new" : "append";
+            writeResidualNorms("../data/u_residual_norms_Re_" + std::to_string(Re) + ".csv", n, u_residual, writeMode);
+            writeResidualNorms("../data/v_residual_norms_Re_" + std::to_string(Re) + ".csv", n, v_residual, writeMode);
+        }
+
 
     }
     return {u, v, p};
@@ -178,18 +190,18 @@ int main()
 
     // User input var
     double u_bc = 100.0;    // U velocity boundary condition
-    int nx_user = 129;
+    int nx_user = 254;
     int nt = 80000;
     int nit = 50;           // Pseudo-time variable used in pressure poisson equation
     double nu = 0.1;
     double rho = 0.1;
     double cfl = 0.5;       // Used in adaptive time step calc. Technically this should be called safety factor i think
-    
+    int Re = static_cast<int>((1.0 * u_bc)/nu);
+
     int nx = nx_user;
-    double dx = 1.0 / (nx - 1.0);
+    double dx = 1.0 / (nx - 1.0); // Assuming L=1.0
     int ny = nx;
     double dy = dx;
-
 
     // Initialise matrices
     Eigen::MatrixXd u = Eigen::MatrixXd::Zero(ny, nx);
@@ -201,12 +213,12 @@ int main()
 
     // Advance cavity flow solution
     // std::tie unpacks the tuple into u,v,p
-    std::tie(u, v, p) = cavityFlow(u, v, p, nt, nit, cfl, dx, dy, nx, ny, rho, nu, u_bc);
+    std::tie(u, v, p) = cavityFlow(u, v, p, nt, nit, cfl, dx, dy, nx, ny, rho, nu, u_bc, Re);
 
     // Assuming exe is run from the build dir
-    writeCsv("../data/u.csv", u);
-    writeCsv("../data/v.csv", v);
-    writeCsv("../data/p.csv", p);
+    writeCsv("../data/u_Re_" + std::to_string(Re) + ".csv", u);
+    writeCsv("../data/v_Re_" + std::to_string(Re) + ".csv", v);
+    writeCsv("../data/p_Re_" + std::to_string(Re) + ".csv", p);
 
     auto endTime = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration<double>(endTime - startTime);

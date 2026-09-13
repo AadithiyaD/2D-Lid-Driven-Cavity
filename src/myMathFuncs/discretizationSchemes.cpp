@@ -1,6 +1,8 @@
 #include "discretizationSchemes.h"
+#include "eigen3/Eigen/Dense"
 
-double forwardDiffFO(const double& currentVal, const double& nextVal, double dH){
+double forwardDiffFO(const double& currentVal, const double& nextVal, double dH)
+{
     return (nextVal - currentVal)/(dH);
 }
 
