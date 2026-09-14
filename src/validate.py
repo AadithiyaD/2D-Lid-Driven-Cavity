@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 DATA = Path(__file__).parent.parent / "data"
-SOURCE = Path(__file__).with_name("step11.cpp")
+SOURCE = Path(__file__).with_name("main.cpp")
 IMGPATH = Path(__file__).parent.parent / "img"
 REYNOLDS = 1000
 
@@ -18,13 +18,14 @@ expt_u_df = pd.read_csv(DATA/ "ghiaData" / "verticalLine.csv")
 expt_v_df = pd.read_csv(DATA/ "ghiaData" / "horizontalLine.csv")
 
 # Normalize x and y coordinates and velocity values
+lidVelocity = cfd_u_df['value'].max()
 cfd_u_df['xCoord'] = cfd_u_df['xCoord'] / cfd_u_df['xCoord'].max()
 cfd_u_df['yCoord'] = cfd_u_df['yCoord'] / cfd_u_df['yCoord'].max()
-cfd_u_df['value'] = cfd_u_df['value'] / cfd_u_df['value'].max()
+cfd_u_df['value'] = cfd_u_df['value'] / lidVelocity
 
 cfd_v_df['xCoord'] = cfd_v_df['xCoord'] / cfd_v_df['xCoord'].max()
 cfd_v_df['yCoord'] = cfd_v_df['yCoord'] / cfd_v_df['yCoord'].max()
-cfd_v_df['value'] = cfd_v_df['value'] / cfd_v_df['value'].max()
+cfd_v_df['value'] = cfd_v_df['value'] / lidVelocity
 
 # Extract subset where x = 0.5 and y = 0.5
 cfd_u_x_05 = cfd_u_df[cfd_u_df['xCoord'] == 0.5]
@@ -38,9 +39,9 @@ cfd_v_y_05_interpolated = np.interp(expt_v_df['x'], cfd_v_y_05['xCoord'], cfd_v_
 u_rmse = rmse(predictions=cfd_u_x_05_interpolated, truth=expt_u_df[f'Re_{REYNOLDS}'])
 v_rmse = rmse(predictions=cfd_v_y_05_interpolated, truth=expt_v_df[f'Re_{REYNOLDS}'])
 
-print(f"Normalized u RMSE = {u_rmse:.04f} m/s")
-print(f"Normalized v RMSE = {v_rmse:.04f} m/s")
-print(f"Sum of Normalized u and v RMSE = {u_rmse + v_rmse:.04f} m/s")
+print(f"Normalized u RMSE = {u_rmse:.04f}")
+print(f"Normalized v RMSE = {v_rmse:.04f}")
+print(f"Combined velocity RMSE = {np.sqrt(u_rmse**2 + v_rmse**2):.04f}")
 
 # Plot and save velocity data
 fig,ax = plt.subplots(2, figsize=(8,8))

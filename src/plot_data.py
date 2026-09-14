@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 DATA = Path(__file__).parent.parent / "data"
-SOURCE = Path(__file__).with_name("step11.cpp")
+SOURCE = Path(__file__).with_name("main.cpp")
 
 
 def read_cpp_parameter(name):
@@ -63,11 +63,6 @@ for axis, name in zip(axes, ("u", "v", "p", "|U|")):
     axis.set_yticks(np.linspace(0, 1, 5))
     fig.colorbar(cf, ax=axis)
 
-# Optional velocity-vector overlay:
-# axes[0].quiver(
-#     X[::2, ::2], Y[::2, ::2], u[::2, ::2], v[::2, ::2],
-#     color="white", edgecolor="black", linewidth=0.5
-# )
 
 fig.suptitle(f"2D Lid-Driven Cavity (Re = {reynolds_number:g})")
 plt.tight_layout(rect=(0, 0, 1, 0.95))
@@ -103,6 +98,7 @@ residual_axis.set_title("Velocity residual norms")
 residual_axis.grid(True, which="both", alpha=0.3)
 residual_axis.legend()
 residual_fig.tight_layout()
+
 # Save residual history separately from the final-field figure.
 residual_fig.savefig(Path(__file__).parent.parent / "img" / f"residual_norms_Re_{reynolds_number}.png")
 plt.show()

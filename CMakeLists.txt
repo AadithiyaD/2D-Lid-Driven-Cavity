@@ -12,21 +12,21 @@ endif()
 find_package(Eigen3 REQUIRED) 
 
 # Add your executable and its source files
-add_executable(step11
-    src/step11.cpp
+add_executable(main
+    src/main.cpp
     src/myMathFuncs/discretizationSchemes.cpp
     src/myMathFuncs/operators.cpp
 )
 
 # The link tells the compiler which files and libraries to look for definitions
-target_link_libraries(step11                # The name of your executable or library (e.g., `step11`)
-    PRIVATE                                 # Scope: Only this step11 needs these libraries, and not other files taht depend on step11
+target_link_libraries(main                # The name of your executable or library (e.g., `main`)
+    PRIVATE                                 # Scope: Only this main needs these libraries, and not other files taht depend on main
     Eigen3::Eigen                           # This Eigen3::Eigen is a target created by find_package(Eigen3)
 )
 
 # Similar structure to target link libraries 
 # The drectory include tells the compiler where to look to find the libraries needed
-target_include_directories(step11
+target_include_directories(main
     PRIVATE
     ${EIGEN3_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
